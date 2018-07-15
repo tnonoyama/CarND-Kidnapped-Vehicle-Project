@@ -63,19 +63,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
             double new_y;
             double new_theta;
 
-            if (yaw_rate == 0)
+            if (fabs(yaw_rate) > 0.0001)
+            {
+                new_x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta+yaw_rat
+e*delta_t)-sin(particles[i].theta));
+                new_y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta)-cos(pa
+rticles[i].theta+yaw_rate*delta_t));
+                new_theta = particles[i].theta + yaw_rate*delta_t;
+            }
+            else
             {
                 new_x = particles[i].x + velocity*delta_t*cos(particles[i].theta);
                 new_y = particles[i].y + velocity*delta_t*sin(particles[i].theta);
                 new_theta = particles[i].theta;
-            }
-            else
-            {
-                new_x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta+ya
-w_rate*delta_t)-sin(particles[i].theta));
-                new_y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta)-c
-os(particles[i].theta+yaw_rate*delta_t));
-                new_theta = particles[i].theta + yaw_rate*delta_t;
             }
 
             normal_distribution<double> N_x(new_x, std_pos[0]);
@@ -134,7 +134,7 @@ os(particles[p].theta));
 
             for (int i = 0; i < trans_observations.size(); i++)
             {
-                double closet_dis = sensor_range;
+                double closest_dis = sensor_range;
                 int association = 0;
                 for (int j = 0; j < map_landmarks.landmark_list.size(); j++)
                 {
@@ -144,38 +144,35 @@ os(particles[p].theta));
                     double calc_dist = sqrt(pow(trans_observations[i].x-landmark_x, 2
 .0)+pow(trans_observations[i].y-landmark_y, 2.0));
 
-                    if (calc_dist < closet_dis)
+                    if (calc_dist < closest_dis)
                     {
-                        closet_dis = calc_dist;
-                        if (association!=0)
-                        {
-                            double meas_x = trans_observations[i].x;
-                            double meas_y = trans_observations[i].y;
-                            double mu_x = map_landmarks.landmark_list[association].x_
-f;
-                            double mu_y = map_landmarks.landmark_list[association].y_
-f;
-                            long double multipler = 1/(2*M_PI*std_landmark[0]*std_lan
-dmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu
+                        closest_dis = calc_dist;
+			association = j;
+		    }
+                    if (association!=0)
+                    {
+                       double meas_x = trans_observations[i].x;
+                       double meas_y = trans_observations[i].y;
+                       double mu_x = map_landmarks.landmark_list[association].x_f;
+                       double mu_y = map_landmarks.landmark_list[association].y_f;
+                       long double multipler = 1/(2*M_PI*std_landmark[0]*std_landmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu
 _y, 2.0)*0.5/pow(std_landmark[1], 2.0)));
-                            if (multipler > 0)
-                            {
-                                particles[p].weight*=multipler;
-                            }
-                        }
-                        associations.push_back(association+1);
-                        sense_x.push_back(trans_observations[i].x);
-                        sense_y.push_back(trans_observations[i].y);
-                    }
-		
-		    particles[p] = SetAssociations(particles[p], associations, sense_
-x, sense_y);
-                    weights[p] = particles[p].weight;
-                }
-
-            }
+                       if (multipler > 0.0001)
+                       {
+                           particles[p].weight*=multipler;
+                       }
+		       else
+		       {
+		           particles[p].weight*=0.00001;
+		       }
+		}
+                associations.push_back(association+1);
+                sense_x.push_back(trans_observations[i].x);
+                sense_y.push_back(trans_observations[i].y);
+            }		
+	    particles[p] = SetAssociations(particles[p], associations, sense_x, sense_y);
+            weights[p] = particles[p].weight;
         }
-
 }
 
 void ParticleFilter::resample() {
@@ -192,6 +189,8 @@ void ParticleFilter::resample() {
             resample_particles.push_back(particles[distribution(gen)]);
         }
 	
+	particles = resample_particles;
+	
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
@@ -201,10 +200,15 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     // associations: The landmark id that goes along with each listed association
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
-
+    particle.associations.clear();
+    particle.sense_x.clear();
+    particle.sense_y.clear();
+	
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+	
+    return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)

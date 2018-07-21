@@ -65,10 +65,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
             if (fabs(yaw_rate) > 0.0001)
             {
-                new_x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta+yaw_rat
-e*delta_t)-sin(particles[i].theta));
-                new_y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta)-cos(pa
-rticles[i].theta+yaw_rate*delta_t));
+                new_x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta+yaw_rate*delta_t)-sin(particles[i].theta));
+                new_y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta)-cos(particles[i].theta+yaw_rate*delta_t));
                 new_theta = particles[i].theta + yaw_rate*delta_t;
             }
             else
@@ -123,10 +121,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                 obs = observations[i];
 
                 //perform the space transformation from vehicle to map
-                trans_obs.x = particles[p].x + (obs.x*cos(particles[p].theta)-obs.y*s
-in(particles[p].theta));
-                trans_obs.y = particles[p].y + (obs.x*sin(particles[p].theta)+obs.y*c
-os(particles[p].theta));
+                trans_obs.x = particles[p].x + (obs.x*cos(particles[p].theta)-obs.y*sin(particles[p].theta));
+                trans_obs.y = particles[p].y + (obs.x*sin(particles[p].theta)+obs.y*cos(particles[p].theta));
                 trans_observations.push_back(trans_obs);
             }
 		

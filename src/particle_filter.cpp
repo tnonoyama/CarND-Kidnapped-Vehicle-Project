@@ -140,9 +140,7 @@ os(particles[p].theta));
                 {
                     double landmark_x = map_landmarks.landmark_list[j].x_f;
                     double landmark_y = map_landmarks.landmark_list[j].y_f;
-
-                    double calc_dist = sqrt(pow(trans_observations[i].x-landmark_x, 2
-.0)+pow(trans_observations[i].y-landmark_y, 2.0));
+                    double calc_dist = sqrt(pow(trans_observations[i].x-landmark_x, 2.0)+pow(trans_observations[i].y-landmark_y, 2.0));
 
                     if (calc_dist < closest_dis)
                     {

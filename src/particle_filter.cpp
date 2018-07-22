@@ -62,18 +62,18 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	    double new_y;
 	    double new_theta;
 
-	    if (yaw_rate == 0)
-	    {
-		new_x = particles[i].x + velocity*delta_t*cos(particles[i].theta);
-		new_y = particles[i].y + velocity*delta_t*sin(particles[i].theta);
-		new_theta = particles[i].theta;
-	    }
-	    else
+	    if (fabs(yaw_rate) > 0.0001)
 	    {
 		new_x = particles[i].x + velocity/yaw_rate*(sin(particles[i].theta+yaw_rate*delta_t)-sin(particles[i].theta));
 		new_y = particles[i].y + velocity/yaw_rate*(cos(particles[i].theta)-cos(particles[i].theta+yaw_rate*delta_t));
 		new_theta = particles[i].theta + yaw_rate*delta_t;
 	    }
+	    else
+            {
+                new_x = particles[i].x + velocity*delta_t*cos(particles[i].theta);
+                new_y = particles[i].y + velocity*delta_t*sin(particles[i].theta);
+                new_theta = particles[i].theta;
+            }
 
 	    normal_distribution<double> N_x(new_x, std_pos[0]);
 	    normal_distribution<double> N_y(new_y, std_pos[1]);
@@ -90,7 +90,6 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
-
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -110,7 +109,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	    vector<int> associations;
 	    vector<double> sense_x;
 	    vector<double> sense_y;
-
+	    
 	    vector<LandmarkObs> trans_observations;
 	    LandmarkObs obs;
 	    for (int i = 0; i < observations.size(); i++)
@@ -128,40 +127,42 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 	    for (int i = 0; i < trans_observations.size(); i++)
 	    {
-		double closet_dis = sensor_range;
+		double closest_dist = sensor_range;
 		int association = 0;
 		for (int j = 0; j < map_landmarks.landmark_list.size(); j++)
 		{
 		    double landmark_x = map_landmarks.landmark_list[j].x_f;
 		    double landmark_y = map_landmarks.landmark_list[j].y_f;
-
 		    double calc_dist = sqrt(pow(trans_observations[i].x-landmark_x, 2.0)+pow(trans_observations[i].y-landmark_y, 2.0));
 
-		    if (calc_dist < closet_dis)
+		    if (calc_dist < closest_dist)
 		    {
-			closet_dis = calc_dist;
-		        if (association!=0)
-		        {
-			    double meas_x = trans_observations[i].x;
-			    double meas_y = trans_observations[i].y;
-			    double mu_x = map_landmarks.landmark_list[association].x_f;
-			    double mu_y = map_landmarks.landmark_list[association].y_f;
-			    long double multipler = 1/(2*M_PI*std_landmark[0]*std_landmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu_y, 2.0)*0.5/pow(std_landmark[1], 2.0)));
-			    if (multipler > 0)
-			    {
-				particles[p].weight*=multipler;
-			    }
-			}
-			associations.push_back(association+1);
-			sense_x.push_back(trans_observations[i].x);
-			sense_y.push_back(trans_observations[i].y);
+			closest_dist = calc_dist;
+			association = j;
 		    }
-
-		    particles[p] = SetAssociations(particles[p], associations, sense_x, sense_y);
-		    weights[p] = particles[p].weight;
 		}
-
+		if (association!=0)
+		{
+			double meas_x = trans_observations[i].x;
+			double meas_y = trans_observations[i].y;
+			double mu_x = map_landmarks.landmark_list[association].x_f;
+			double mu_y = map_landmarks.landmark_list[association].y_f;
+			long double multipler = 1/(2*M_PI*std_landmark[0]*std_landmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu_y, 2.0)*0.5/pow(std_landmark[1], 2.0)));
+			if (multipler > 0.0001)
+			{
+			    particles[p].weight*=multipler;
+			}
+			else
+			{
+			    particles[p].weight*=0.00001;
+			}
+		}
+		associations.push_back(association+1);
+		sense_x.push_back(trans_observations[i].x);
+		sense_y.push_back(trans_observations[i].y);
 	    }
+	    particles[p] = SetAssociations(particles[p], associations, sense_x, sense_y);
+	    weights[p] = particles[p].weight;
 	}
 }
 
@@ -179,19 +180,29 @@ void ParticleFilter::resample() {
 	{
 	    resample_particles.push_back(particles[distribution(gen)]);
 	}
+
+	particles = resample_particles;
+
 }
 
 Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<int>& associations, 
                                      const std::vector<double>& sense_x, const std::vector<double>& sense_y)
 {
+
     //particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
     // associations: The landmark id that goes along with each listed association
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
+    //clear the previous associations
+    particle.associations.clear();
+    particle.sense_x.clear();
+    particle.sense_y.clear();
 
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+
+    return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)

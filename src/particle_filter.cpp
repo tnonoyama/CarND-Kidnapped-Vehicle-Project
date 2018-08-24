@@ -136,42 +136,42 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], c
             for (int i = 0; i < trans_observations.size(); i++)
             {
                 double closest_dis = sensor_range;
-                int association = 0;
+                int association = -1;
+//		int association = 0;
                 for (int j = 0; j < map_landmarks.landmark_list.size(); j++)
                 {
                     double landmark_x = map_landmarks.landmark_list[j].x_f;
                     double landmark_y = map_landmarks.landmark_list[j].y_f;
                     double calc_dist = sqrt(pow(trans_observations[i].x-landmark_x, 2.0)+pow(trans_observations[i].y-landmark_y, 2.0));
-
                     if (calc_dist < closest_dis)
                     {
                         closest_dis = calc_dist;
 			association = j;
 		    }
-                    if (association!=0)
-                    {
-                       double meas_x = trans_observations[i].x;
-                       double meas_y = trans_observations[i].y;
-                       double mu_x = map_landmarks.landmark_list[association].x_f;
-                       double mu_y = map_landmarks.landmark_list[association].y_f;
-                       long double multipler = 1/(2*M_PI*std_landmark[0]*std_landmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu_y, 2.0)*0.5/pow(std_landmark[1], 2.0)));
-		       if (multipler > 0.0001)
-                       {
-                           particles[p].weight*=multipler;
-                       }
-		       else
-		       {
-		           particles[p].weight*=0.00001;
-		       }
-		    }
 		}
-                associations.push_back(association+1);
-                sense_x.push_back(trans_observations[i].x);
+                if (association!=0)
+                {
+		   double meas_x = trans_observations[i].x;
+                   double meas_y = trans_observations[i].y;
+                   double mu_x = map_landmarks.landmark_list[association].x_f;
+                   double mu_y = map_landmarks.landmark_list[association].y_f;
+		   long double multipler = 1/(2*M_PI*std_landmark[0]*std_landmark[1])*exp(-(pow(meas_x - mu_x, 2.0)*0.5/pow(std_landmark[0], 2.0)+pow(meas_y - mu_y, 2.0)*0.5/pow(std_landmark[1], 2.0)));
+		   if (multipler > 0.0001)
+	           {
+	           particles[p].weight*=multipler;
+	           }
+	           else
+	           {
+	           particles[p].weight*=0.00001;
+	           }
+		}
+		associations.push_back(association+1);
+	        sense_x.push_back(trans_observations[i].x);
                 sense_y.push_back(trans_observations[i].y);
-            }		
+            }
 	    particles[p] = SetAssociations(particles[p], associations, sense_x, sense_y);
-            weights[p] = particles[p].weight;
-        }
+	    weights[p] = particles[p].weight;
+	}
 }
 
 void ParticleFilter::resample() {
